@@ -1,6 +1,6 @@
 'use strict';
 const fs = require('fs');
-const { join, resolve } = require('path');
+const { join } = require('path');
 const config = require('./config.json');
 const manifestFile = require('./manifest.json');
 const {
