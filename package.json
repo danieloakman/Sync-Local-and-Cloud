@@ -1,0 +1,25 @@
+{
+  "name": "sync-cloud-and-local",
+  "version": "1.0.0",
+  "description": "Syncs local repositories with those stored in cloud services and can specify files/directories to ignore.",
+  "scripts": {
+    "sync": "node sync.js",
+    "sync-test": "node sync.js -t",
+    "sync-select": "node sync.js -s"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/danieloakman/Sync-Cloud-and-Local.git"
+  },
+  "author": "Daniel Oakman",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/danieloakman/Sync-Cloud-and-Local/issues"
+  },
+  "homepage": "https://github.com/danieloakman/Sync-Cloud-and-Local#readme",
+  "dependencies": {
+    "archiver": "^4.0.1",
+    "readline-sync": "^1.4.10",
+    "unzipper": "^0.10.11"
+  }
+}
