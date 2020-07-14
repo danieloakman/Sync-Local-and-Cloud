@@ -16,8 +16,19 @@ const CONFIG_RUN_SELECTION = [];
 let configPath = './config.json', manifestPath = './manifest.json';
 
 // Get command line arguments:
-if (argv.test)
+if (argv.config)
+  configPath = argv.config;
+const config = require(configPath);
+
+if (argv.manifest)
+  manifestPath = argv.manifest;
+const manifestFile = require(manifestPath);
+
+if (argv.test) {
   process.env.TEST = true;
+  console.log(' * Running in TEST mode');
+}
+
 if (argv.select) {
   let input = 0;
   while (input > 0 || !CONFIG_RUN_SELECTION.length) {
@@ -40,16 +51,6 @@ if (argv.select) {
     }
   }
 }
-if (argv.config)
-  configPath = argv.config;
-if (argv.manifest)
-  manifestPath = argv.manifest;
-
-if (process.env.TEST)
-  console.log(' * Running in TEST mode');
-
-const config = require(configPath);
-const manifestFile = require(manifestPath);
 
 async function directoryFunc (dir, root, otherRoot, manifest) {
   if (dir === root)
