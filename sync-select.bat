@@ -1,3 +1,3 @@
 @ECHO OFF
-node sync.js -s
+node sync.js --select
 PAUSE

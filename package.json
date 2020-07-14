@@ -20,6 +20,7 @@
   "dependencies": {
     "archiver": "^4.0.1",
     "readline-sync": "^1.4.10",
-    "unzipper": "^0.10.11"
+    "unzipper": "^0.10.11",
+    "yargs": "^15.4.1"
   }
 }

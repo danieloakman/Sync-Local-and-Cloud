@@ -1,3 +1,3 @@
 @ECHO OFF
-node sync.js -t
+node sync.js --test
 PAUSE

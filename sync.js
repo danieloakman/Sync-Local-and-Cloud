@@ -1,8 +1,6 @@
 'use strict';
 const fs = require('fs');
 const { join } = require('path');
-const config = require('./config.json');
-const manifestFile = require('./manifest.json');
 const {
   convertToRelative,
   mkdir,
@@ -12,39 +10,46 @@ const {
   copyFile
 } = require('./async-fs');
 const readlineSync = require('readline-sync');
+const { argv } = require('yargs');
 
 const CONFIG_RUN_SELECTION = [];
+let configPath = './config.json', manifestPath = './manifest.json';
 
 // Get command line arguments:
-for (const arg of process.argv) {
-  if (arg.toLowerCase() === '-t') // Test
-    process.env.TEST = true;
-  if (arg.toLowerCase() === '-s') { // Select
-    let input = 0;
-    while (input > 0 || !CONFIG_RUN_SELECTION.length) {
-      console.clear();
-      console.log('Selected:', CONFIG_RUN_SELECTION);
-      const selection = [
-        'RUN',
-        ...config
-          .filter(({ active, repoName }) => {
-            return active && !CONFIG_RUN_SELECTION.includes(repoName)
-          })
-          .map(({ repoName }) => repoName)
-      ];
-      input = readlineSync.keyInSelect(selection, 'Which config to run?');
-      if (input === -1) {
-        console.log('Aborting...');
-        return;
-      } else if (input > 0) {
-        CONFIG_RUN_SELECTION.push(selection[input]);
-      }
+if (argv.test)
+  process.env.TEST = true;
+if (argv.select) {
+  let input = 0;
+  while (input > 0 || !CONFIG_RUN_SELECTION.length) {
+    console.clear();
+    console.log('Selected:', CONFIG_RUN_SELECTION);
+    const selection = [
+      'RUN',
+      ...config
+        .filter(({ active, repoName }) => {
+          return active && !CONFIG_RUN_SELECTION.includes(repoName)
+        })
+        .map(({ repoName }) => repoName)
+    ];
+    input = readlineSync.keyInSelect(selection, 'Which config to run?');
+    if (input === -1) {
+      console.log('Aborting...');
+      return;
+    } else if (input > 0) {
+      CONFIG_RUN_SELECTION.push(selection[input]);
     }
   }
 }
+if (argv.config)
+  configPath = argv.config;
+if (argv.manifest)
+  manifestPath = argv.manifest;
 
 if (process.env.TEST)
   console.log(' * Running in TEST mode');
+
+const config = require(configPath);
+const manifestFile = require(manifestPath);
 
 async function directoryFunc (dir, root, otherRoot, manifest) {
   if (dir === root)
