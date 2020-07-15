@@ -118,6 +118,8 @@ function updateManifest (manifest, ignoreRegex) {
 }
 
 (async () => {
+  console.time('sync.js');
+
   await Promise.all(config.map(async ({ cloudDirPath, localDirPath, repoName, ignore, active }) => {
     if (!active || (CONFIG_RUN_SELECTION.length && !CONFIG_RUN_SELECTION.includes(repoName)))
       return;
@@ -165,4 +167,6 @@ function updateManifest (manifest, ignoreRegex) {
     fs.writeFileSync('./manifest.json', JSON.stringify(manifestFile, null, 2));
     console.log('Saved manifest.json');
   }
+
+  console.timeEnd('sync.js');
 })();
