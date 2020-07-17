@@ -91,15 +91,13 @@ module.exports.readdirRecursive = async (dir, ignoreRegex = /(?=a)b/) => {
 module.exports.unlinkRecursive = async path => {
   const deletePath = (path, isFile) => {
     console.log(` - "${path}"`);
-    if (process.env.TEST)
-      return;
-    else
+    if (!process.env.TEST)
       return new Promise(resolve => {
         if (isFile)
           fs.unlink(path, err => {
             if (err) console.error(err);
             resolve();
-          })
+          });
         else
           fs.rmdir(path, err => {
             if (err) console.error(err);

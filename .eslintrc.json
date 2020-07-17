@@ -1,0 +1,55 @@
+{
+    "plugins": ["import", "node", "promise", "standard"],
+    "parser": "babel-eslint",
+    "extends": ["eslint:recommended", "plugin:node/recommended", "plugin:promise/recommended", "plugin:import/errors", "standard"],
+    "rules": {
+        "array-bracket-spacing": "warn",
+        "dot-notation": "warn",
+        "lines-between-class-members": "warn",
+        "no-console":"off",
+        "no-multi-spaces":"off",
+        "node/no-unpublished-require":"warn",
+        "object-curly-newline": "warn",
+        "prefer-const": "warn",
+        "quote-props": "off",
+        "quotes": "warn",
+        "curly":"off",
+        "one-var": "off",
+        "semi": [
+            2,
+            "always"
+        ],
+        "indent": [
+            2,
+            2,
+            {
+                "SwitchCase": 1
+            }
+        ],
+        "linebreak-style": [
+            "off"
+        ],
+        "max-len": [
+            2,
+            {
+                "code": 1000
+            }
+        ]
+    },
+    "env": {
+        "node": true,
+        "mocha": true
+    },
+    "parserOptions": {
+        "ecmaVersion": 9
+    },
+    "settings": {
+    },
+    "globals": {
+        "API_URI": true,
+        "ENVIRONMENT_TYPE": true,
+        "APPLICATION_VERSION": true,
+        "__SEQ_URI__": true,
+        "__SEQ_API_KEY__": true
+    }
+}

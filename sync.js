@@ -8,7 +8,7 @@ const {
   readdirRecursive,
   unlinkRecursive,
   copyFile
-} = require('./async-fs');
+} = require('./utils/file-util');
 const readlineSync = require('readline-sync');
 const { argv } = require('yargs');
 
@@ -38,7 +38,7 @@ if (argv.select) {
       'RUN',
       ...config
         .filter(({ active, repoName }) => {
-          return active && !CONFIG_RUN_SELECTION.includes(repoName)
+          return active && !CONFIG_RUN_SELECTION.includes(repoName);
         })
         .map(({ repoName }) => repoName)
     ];
@@ -59,7 +59,7 @@ async function directoryFunc (dir, root, otherRoot, manifest) {
 
   const dirIsDeleted = manifest[root] && // A check to see if initialising for the first time
     ((manifest[dir] === false && !fs.existsSync(dir)) ||
-    (manifest[otherDir] === false && !fs.existsSync(otherDir)))
+    (manifest[otherDir] === false && !fs.existsSync(otherDir)));
 
   if (dirIsDeleted) {
     await unlinkRecursive(dir);
