@@ -87,6 +87,28 @@ module.exports.readdirRecursive = async (dir, ignoreRegex = /(?=a)b/) => {
   }
 };
 
+module.exports.readdirRecursiveSync = (dir, ignoreRegex = /(?=a)b/) => {
+  if (ignoreRegex.test(dir) || !fs.existsSync(dir))
+    return { files: [], dirs: [] };
+  const stats = fs.statSync(dir);
+  if (stats.isFile())
+    return { files: [dir], dirs: [] };
+  if (stats.isDirectory()) {
+    const files = [];
+    const dirs = [dir];
+    const fileOrDirs = fs.readdirSync(dir);
+    for (const fileOrDir of fileOrDirs) {
+      const {
+        files: newFiles,
+        dirs: newDirs
+      } = module.exports.readdirRecursiveSync(join(dir, fileOrDir), ignoreRegex);
+      files.push(...newFiles);
+      dirs.push(...newDirs);
+    }
+    return { files, dirs };
+  }
+};
+
 /** Async and recursive wrapper for fs.unlink() */
 module.exports.unlinkRecursive = async path => {
   const deletePath = (path, isFile) => {
@@ -109,6 +131,23 @@ module.exports.unlinkRecursive = async path => {
   const { files, dirs } = await module.exports.readdirRecursive(path);
   for (const path of [...files, ...dirs])
     await deletePath(path, (await module.exports.stat(path)).isFile());
+};
+
+module.exports.unlinkRecursiveSync = path => {
+  const { files, dirs } = module.exports.readdirRecursiveSync(path);
+
+  for (const path of [...files, ...dirs]) {
+    console.log(` - "${path}"`);
+
+    if (process.env.TEST)
+      continue;
+
+    const stat = fs.statSync(path);
+    if (stat.isFile())
+      fs.unlinkSync(path);
+    else if (stat.isDirectory())
+      fs.rmdirSync(path);
+  }
 };
 
 module.exports.convertToRelative = (path, root) => {

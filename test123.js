@@ -2,8 +2,8 @@
 const fs = require('fs');
 const { join } = require('path');
 // const manifest = require('./manifest.json');
-const config = require('./config.json');
-const { unlinkRecursive } = require('./async-fs');
+// const config = require('./config.json');
+// const { readdirRecursiveSync, readdirRecursive } = require('./utils/file-util');
 
 // const newManifest = {};
 // config.forEach(({ repoName }) => {
@@ -108,14 +108,33 @@ const { unlinkRecursive } = require('./async-fs');
 //   });
 // }
 
-(async () => {
-  const { zipDir, unzipDir } = require('./zip-util')
-  if (fs.existsSync('./test.zip'))
-    fs.unlinkSync('./test.zip')
-  await zipDir(config[0].cloudDirPath, './test.zip', /\.git/i);
-  if (fs.existsSync('./test'))
-    await unlinkRecursive('./test');
-  await unzipDir('./test.zip', './test');
-})();
+// (async () => {
+//   const { zipDir, unzipDir } = require('./zip-util')
+//   if (fs.existsSync('./test.zip'))
+//     fs.unlinkSync('./test.zip')
+//   await zipDir(config[0].cloudDirPath, './test.zip', /\.git/i);
+//   if (fs.existsSync('./test'))
+//     await unlinkRecursive('./test');
+//   await unzipDir('./test.zip', './test');
+// })();
 
-console.log(1);
+// console.log(1);
+
+// (async () => {
+//   const path = join(__dirname, './');
+
+//   console.time('async');
+//   await readdirRecursive(path);
+//   console.timeEnd('async');
+
+//   console.time('sync');
+//   readdirRecursiveSync(path);
+//   console.timeEnd('sync');
+// })();
+
+const { forEachPathSync } = require('more-node-fs');
+const paths = [];
+forEachPathSync('./', path => {
+  paths.push(path);
+}, { ignore: /node_modules/i });
+console.log('number of paths:', paths.length);
