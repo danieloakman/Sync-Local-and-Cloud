@@ -1,17 +1,13 @@
 'use strict';
 const fs = require('fs');
 const { join } = require('path');
-const { promisify } = require('util');
 const readlineSync = require('readline-sync');
 const { argv } = require('yargs');
 const {
-  deleteDeep,
-  deleteDeepSync,
-  forEachPath,
   forEachPathSync,
-  readdirDeep,
   readdirDeepSync
 } = require('more-node-fs');
+const term = require('terminal-kit').terminal;
 
 const CONFIG_RUN_SELECTION = [];
 let configPath = './config.json', manifestPath = './manifest.json';
@@ -19,7 +15,8 @@ let configPath = './config.json', manifestPath = './manifest.json';
 // Get command line arguments:
 if (argv.config)
   configPath = argv.config;
-const config = require(configPath);
+// const config = require(configPath);
+const config = require('C:/Users/doakm/Google Drive/CodeRepos/config.json');
 
 if (argv.manifest)
   manifestPath = argv.manifest;
@@ -29,6 +26,7 @@ if (argv.test) {
   process.env.TEST = true;
   console.log(' * Running in TEST mode');
 }
+process.env.TEST = true;
 
 if (argv.select) {
   let input = 0;
@@ -53,11 +51,31 @@ if (argv.select) {
   }
 }
 
-if (argv.async) {
-  process.env.ASYNC = true;
-  console.log(' * Running in asynchronous mode');
-} else
-  console.log(' * Running in synchronous mode');
+function deleteDeep (path) {
+  forEachPathSync(path, (path, stats) => {
+    console.log(` - "${path}"`);
+    if (!process.env.TEST) {
+      if (stats.isDirectory())
+        fs.rmdirSync(path);
+      else
+        fs.unlinkSync(path);
+    }
+  });
+}
+
+function mkdir (path, manifest) {
+  console.log(` + "${path}"`);
+  manifest[path] = true;
+  if (!process.env.TEST)
+    fs.mkdirSync(path);
+}
+
+function copyFile (src, dest, manifest) {
+  console.log(` + "${dest}"`);
+  manifest[src] = manifest[dest] = true;
+  if (!process.env.TEST)
+    fs.copyFileSync(src, dest);
+}
 
 function convertToRelative (path, root) {
   return path
@@ -65,7 +83,7 @@ function convertToRelative (path, root) {
     .replace(root + '\\', '');
 }
 
-async function directoryFunc (dir, root, otherRoot, manifest) {
+function directoryFunc (dir, root, otherRoot, manifest) {
   if (dir === root)
     return;
   const otherDir = join(otherRoot, convertToRelative(dir, root));
@@ -75,37 +93,17 @@ async function directoryFunc (dir, root, otherRoot, manifest) {
     (manifest[otherDir] === false && !fs.existsSync(otherDir)));
 
   if (dirIsDeleted) {
-    await deleteDeep(dir);
-    await deleteDeep(otherDir);
+    deleteDeep(dir);
+    deleteDeep(otherDir);
     manifest[dir] = manifest[otherDir] = false;
   // If the directory at path doesn't exists then make it:
   } else if (!fs.existsSync(otherDir)) {
-    await mkdir(otherDir, manifest);
+    mkdir(otherDir, manifest);
     manifest[dir] = true;
   }
 }
 
-function directoryFuncSync (dir, root, otherRoot, manifest) {
-  if (dir === root)
-    return;
-  const otherDir = join(otherRoot, convertToRelative(dir, root));
-
-  const dirIsDeleted = manifest[root] && // A check to see if initialising for the first time
-    ((manifest[dir] === false && !fs.existsSync(dir)) ||
-    (manifest[otherDir] === false && !fs.existsSync(otherDir)));
-
-  if (dirIsDeleted) {
-    unlinkRecursiveSync(dir);
-    unlinkRecursiveSync(otherDir);
-    manifest[dir] = manifest[otherDir] = false;
-  // If the directory at path doesn't exists then make it:
-  } else if (!fs.existsSync(otherDir)) {
-    fs.mkdirSync(otherDir, manifest);
-    manifest[dir] = true;
-  }
-}
-
-async function fileFunc (file, root, otherRoot, manifest) {
+function fileFunc (file, root, otherRoot, manifest) {
   const otherFile = join(otherRoot, convertToRelative(file, root));
 
   const fileIsDeleted = manifest[root] && // A check to see if initialising
@@ -113,43 +111,19 @@ async function fileFunc (file, root, otherRoot, manifest) {
     (manifest[otherFile] === false && !fs.existsSync(otherFile)));
 
   if (fileIsDeleted) {
-    await unlinkRecursive(file);
-    await unlinkRecursive(otherFile);
+    deleteDeep(file);
+    deleteDeep(otherFile);
     manifest[file] = manifest[otherFile] === false;
   } else if (!fs.existsSync(otherFile))
-    await copyFile(file, otherFile, manifest);
-  else {
-    const stats = await stat(file);
-    const otherStats = await stat(otherFile);
-    // Compare stat modified times:
-    if (stats.mtimeMs > otherStats.mtimeMs)
-      await copyFile(file, otherFile, manifest);
-    else if (stats.mtimeMs < otherStats.mtimeMs)
-      await copyFile(otherFile, file, manifest);
-  }
-}
-
-function fileFuncSync (file, root, otherRoot, manifest) {
-  const otherFile = join(otherRoot, convertToRelative(file, root));
-
-  const fileIsDeleted = manifest[root] && // A check to see if initialising
-    ((manifest[file] === false && !fs.existsSync(file)) ||
-    (manifest[otherFile] === false && !fs.existsSync(otherFile)));
-
-  if (fileIsDeleted) {
-    unlinkRecursiveSync(file);
-    unlinkRecursiveSync(otherFile);
-    manifest[file] = manifest[otherFile] === false;
-  } else if (!fs.existsSync(otherFile))
-    fs.copyFileSync(file, otherFile, manifest);
+    copyFile(file, otherFile, manifest);
   else {
     const stats = fs.statSync(file);
     const otherStats = fs.statSync(otherFile);
     // Compare stat modified times:
     if (stats.mtimeMs > otherStats.mtimeMs)
-      fs.copyFileSync(file, otherFile, manifest);
+      copyFile(file, otherFile, manifest);
     else if (stats.mtimeMs < otherStats.mtimeMs)
-      fs.copyFileSync(otherFile, file, manifest);
+      copyFile(otherFile, file, manifest);
   }
 }
 
@@ -177,7 +151,7 @@ function updateManifest (manifest, ignoreRegex) {
 (async () => {
   console.time('sync.js');
 
-  await Promise.all(config.map(async ({ cloudDirPath, localDirPath, repoName, ignore, active }) => {
+  config.map(({ cloudDirPath, localDirPath, repoName, ignore, active }) => {
     if (!active || (CONFIG_RUN_SELECTION.length && !CONFIG_RUN_SELECTION.includes(repoName)))
       return;
     console.log(`Syncing ${repoName}`);
@@ -194,36 +168,31 @@ function updateManifest (manifest, ignoreRegex) {
     cloudDirPath = cloudDirPath.replace(/\//g, '\\');
     localDirPath = localDirPath.replace(/\//g, '\\');
     if (!fs.existsSync(cloudDirPath)) {
-      if (process.env.ASYNC) await mkdir(cloudDirPath, manifest);
-      else fs.mkdirSync(cloudDirPath, manifest);
+      mkdir(cloudDirPath, manifest);
     }
     if (!fs.existsSync(localDirPath))
-      await mkdir(localDirPath, manifest);
+      mkdir(localDirPath, manifest);
 
-    const cloud = process.env.ASYNC
-      ? await readdirRecursive(cloudDirPath, ignore)
-      : readdirRecursiveSync(cloudDirPath, ignore);
-    const local = process.env.ASYNC
-      ? await readdirRecursive(localDirPath, ignore)
-      : readdirRecursiveSync(localDirPath, ignore);
+    const cloud = readdirDeepSync(cloudDirPath, { ignore });
+    const local = readdirDeepSync(localDirPath, { ignore });
 
     updateManifest(manifest, ignore);
 
     for (const dir of cloud.dirs)
-      await directoryFunc(dir, cloudDirPath, localDirPath, manifest);
+      directoryFunc(dir, cloudDirPath, localDirPath, manifest);
     for (const dir of local.dirs)
-      await directoryFunc(dir, localDirPath, cloudDirPath, manifest);
+      directoryFunc(dir, localDirPath, cloudDirPath, manifest);
 
     for (const file of cloud.files)
-      await fileFunc(file, cloudDirPath, localDirPath, manifest);
+      fileFunc(file, cloudDirPath, localDirPath, manifest);
     for (const file of local.files)
-      await fileFunc(file, localDirPath, cloudDirPath, manifest);
+      fileFunc(file, localDirPath, cloudDirPath, manifest);
 
     updateManifest(manifest, ignore);
     manifest[cloudDirPath] = manifest[localDirPath] = true;
 
     console.timeEnd(repoName);
-  }));
+  });
 
   // Overwrite manifest file:
   if (!process.env.TEST) {
