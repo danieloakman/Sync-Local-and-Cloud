@@ -35,7 +35,12 @@ module.exports.copyFile = (src, dest, manifest) => {
       resolve();
     } else
       fs.copyFile(src, dest, err => {
-        if (err) console.error(err);
+        if (err.code === 'EPERM') {
+          fs.chmodSync(src, 0o765);
+          fs.chmodSync(dest, 0o765);
+          fs.copyFileSync(src, dest);
+        } else if (err)
+          console.error(err);
         manifest[src] = manifest[dest] = true;
         resolve();
       });
