@@ -5,31 +5,49 @@ const {
   convertToRelative,
   mkdir,
   stat,
-  readdirRecursive,
-  unlinkRecursive,
   copyFile
 } = require('./utils/file-util');
 const readlineSync = require('readline-sync');
-const { argv } = require('yargs');
-
-const CONFIG_RUN_SELECTION = [];
-let configPath = './config.json', manifestPath = './manifest.json';
+const { deleteDeep, walkdir } = require('more-node-fs');
+const { ArgumentParser } = require('argparse');
 
 // Get command line arguments:
-if (argv.config)
-  configPath = argv.config;
+const argparser = new ArgumentParser({ description: 'Sync-Local-and-Cloud' });
+argparser.add_argument('config', {
+  help: 'The path to the config JSON file.'
+});
+argparser.add_argument('manifest', {
+  help: 'The path to the manifest JSON file.'
+});
+argparser.add_argument('-t', '--test', {
+  default: false, action: 'store_true'
+});
+argparser.add_argument('-s', '--select', {
+  default: false,
+  type: arg => arg.toLowerCase().trim() === 'true'
+});
+argparser.add_argument('-a', '--action', {
+  default: 'sync',
+  type: arg => {
+    arg = arg.toLowerCase().trim();
+    if (!['sync', 'pull', 'push'].includes(arg)) {
+      throw new Error('action parameter is invalid.');
+    }
+    return arg;
+  }
+});
+const {
+  config: configPath, manifest: manifestPath, select, action, test
+} = argparser.parse_args();
+
 const config = require(configPath);
-
-if (argv.manifest)
-  manifestPath = argv.manifest;
 const manifestFile = require(manifestPath);
-
-if (argv.test) {
+const CONFIG_RUN_SELECTION = [];
+if (test) {
   process.env.TEST = true;
   console.log(' * Running in TEST mode');
 }
-
-if (argv.select) {
+if (select) {
   let input = 0;
   while (input > 0 || !CONFIG_RUN_SELECTION.length) {
     console.clear();
@@ -62,8 +80,8 @@ async function directoryFunc (dir, root, otherRoot, manifest) {
     (manifest[otherDir] === false && !fs.existsSync(otherDir)));
 
   if (dirIsDeleted) {
-    await unlinkRecursive(dir);
-    await unlinkRecursive(otherDir);
+    await deleteDeep(dir);
+    await deleteDeep(otherDir);
     manifest[dir] = manifest[otherDir] = false;
   // If the directory at path doesn't exists then make it:
   } else if (!fs.existsSync(otherDir)) {
@@ -80,8 +98,8 @@ async function fileFunc (file, root, otherRoot, manifest) {
     (manifest[otherFile] === false && !fs.existsSync(otherFile)));
 
   if (fileIsDeleted) {
-    await unlinkRecursive(file);
-    await unlinkRecursive(otherFile);
+    await deleteDeep(file);
+    await deleteDeep(otherFile);
     manifest[file] = manifest[otherFile] === false;
   } else if (!fs.existsSync(otherFile))
     await copyFile(file, otherFile, manifest);
@@ -117,13 +135,25 @@ function updateManifest (manifest, ignoreRegex) {
   }
 }
 
+function readdir (path, ignoreRegex) {
+  const result = { files: [], dirs: [] };
+  for (const { path: p, stats } of walkdir(path, { ignore: ignoreRegex })) {
+    if (stats.isDirectory()) {
+      result.dirs.push(p);
+    } else {
+      result.files.push(p);
+    }
+  }
+  return result;
+}
+
 (async () => {
   console.time('sync.js');
 
   await Promise.all(config.map(async ({ cloudDirPath, localDirPath, repoName, ignore, active }) => {
     if (!active || (CONFIG_RUN_SELECTION.length && !CONFIG_RUN_SELECTION.includes(repoName)))
       return;
-    console.log(`Syncing ${repoName}`);
+    console.log(`${action}ing ${repoName}`);
     console.time(repoName);
 
     let manifest;
@@ -141,20 +171,28 @@ function updateManifest (manifest, ignoreRegex) {
     if (!fs.existsSync(localDirPath))
       await mkdir(localDirPath, manifest);
 
-    const cloud = await readdirRecursive(cloudDirPath, ignore);
-    const local = await readdirRecursive(localDirPath, ignore);
+    const cloud = readdir(cloudDirPath, ignore);
+    const local = readdir(localDirPath, ignore);
 
     updateManifest(manifest, ignore);
 
-    for (const dir of cloud.dirs)
-      await directoryFunc(dir, cloudDirPath, localDirPath, manifest);
-    for (const dir of local.dirs)
-      await directoryFunc(dir, localDirPath, cloudDirPath, manifest);
+    if (['sync', 'pull'].includes(action)) {
+      for (const dir of cloud.dirs)
+        await directoryFunc(dir, cloudDirPath, localDirPath, manifest);
+    }
+    if (['sync', 'push'].includes(action)) {
+      for (const dir of local.dirs)
+        await directoryFunc(dir, localDirPath, cloudDirPath, manifest);
+    }
 
-    for (const file of cloud.files)
-      await fileFunc(file, cloudDirPath, localDirPath, manifest);
-    for (const file of local.files)
-      await fileFunc(file, localDirPath, cloudDirPath, manifest);
+    if (['sync', 'pull'].includes(action)) {
+      for (const file of cloud.files)
+        await fileFunc(file, cloudDirPath, localDirPath, manifest);
+    }
+    if (['sync', 'push'].includes(action)) {
+      for (const file of local.files)
+        await fileFunc(file, localDirPath, cloudDirPath, manifest);
+    }
 
     updateManifest(manifest, ignore);
     manifest[cloudDirPath] = manifest[localDirPath] = true;

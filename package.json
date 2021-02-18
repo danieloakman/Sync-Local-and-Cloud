@@ -23,9 +23,11 @@
   "homepage": "https://github.com/danieloakman/Sync-Cloud-and-Local#readme",
   "dependencies": {
     "archiver": "^4.0.1",
+    "argparse": "^2.0.1",
+    "more-node-fs": "^1.2.1",
     "readline-sync": "^1.4.10",
-    "unzipper": "^0.10.11",
-    "yargs": "^15.4.1"
+    "terminal-kit": "^1.42.0",
+    "unzipper": "^0.10.11"
   },
   "devDependencies": {
     "@babel/core": "^7.7.2",

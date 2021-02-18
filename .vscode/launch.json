@@ -9,7 +9,10 @@
             "request": "launch",
             "name": "Launch Current File",
             "program": "${file}",
-            "args": [],
+            "args": [
+                "-t",
+                // "-a pull"
+            ],
             "autoAttachChildProcesses": false
         }
     ]
