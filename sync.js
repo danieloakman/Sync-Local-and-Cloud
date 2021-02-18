@@ -1,6 +1,6 @@
 'use strict';
 const fs = require('fs');
-const { join } = require('path');
+const { join, basename } = require('path');
 const {
   convertToRelative,
   mkdir,
@@ -120,27 +120,31 @@ async function fileFunc (file, root, otherRoot, manifest) {
  */
 function parseRegExp (str) {
   if (!str)
-    return /(?=a)b/; // This RegExp always returns false.
+    return null;
   const flags = str.substring(str.lastIndexOf('/') + 1);
   const source = str.substring(1, str.lastIndexOf('/'));
   return new RegExp(source, flags);
 }
 
-function updateManifest (manifest, ignoreRegex) {
+function updateManifest (manifest, ignore, matchFile) {
   for (const path in manifest) {
-    if (manifest[path] === false || ignoreRegex.test(manifest[path]))
+    if (
+      manifest[path] === false ||
+      (ignore instanceof RegExp && ignore.test(manifest[path])) ||
+      (matchFile instanceof RegExp && !matchFile.test((basename(manifest[path]))))
+    )
       delete manifest[path]; // Remove old deleted flagged paths or if it's being ignored
     else if (!fs.existsSync(path))
       manifest[path] = false; // Flag as deleted.
   }
 }
 
-function readdir (path, ignoreRegex) {
+function readdir (path, ignore, matchFile) {
   const result = { files: [], dirs: [] };
-  for (const { path: p, stats } of walkdir(path, { ignore: ignoreRegex })) {
+  for (const { path: p, stats } of walkdir(path, { ignore })) {
     if (stats.isDirectory()) {
       result.dirs.push(p);
-    } else {
+    } else if (!matchFile || (matchFile instanceof RegExp && matchFile.test(basename(p)))) {
       result.files.push(p);
     }
   }
@@ -150,7 +154,9 @@ function readdir (path, ignoreRegex) {
 (async () => {
   console.time('sync.js');
 
-  await Promise.all(config.map(async ({ cloudDirPath, localDirPath, repoName, ignore, active }) => {
+  await Promise.all(config.map(async ({
+    cloudDirPath, localDirPath, repoName, ignore, matchFile, active
+  }) => {
     if (!active || (CONFIG_RUN_SELECTION.length && !CONFIG_RUN_SELECTION.includes(repoName)))
       return;
     console.log(`${action}ing ${repoName}`);
@@ -163,6 +169,7 @@ function readdir (path, ignoreRegex) {
       manifest = manifestFile[repoName];
 
     ignore = parseRegExp(ignore);
+    matchFile = parseRegExp(matchFile);
 
     cloudDirPath = cloudDirPath.replace(/\//g, '\\');
     localDirPath = localDirPath.replace(/\//g, '\\');
@@ -171,10 +178,10 @@ function readdir (path, ignoreRegex) {
     if (!fs.existsSync(localDirPath))
       await mkdir(localDirPath, manifest);
 
-    const cloud = readdir(cloudDirPath, ignore);
-    const local = readdir(localDirPath, ignore);
+    const cloud = readdir(cloudDirPath, ignore, matchFile);
+    const local = readdir(localDirPath, ignore, matchFile);
 
-    updateManifest(manifest, ignore);
+    updateManifest(manifest, ignore, matchFile);
 
     if (['sync', 'pull'].includes(action)) {
       for (const dir of cloud.dirs)
@@ -194,7 +201,7 @@ function readdir (path, ignoreRegex) {
         await fileFunc(file, localDirPath, cloudDirPath, manifest);
     }
 
-    updateManifest(manifest, ignore);
+    updateManifest(manifest, ignore, matchFile);
     manifest[cloudDirPath] = manifest[localDirPath] = true;
 
     console.timeEnd(repoName);

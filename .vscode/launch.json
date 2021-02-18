@@ -10,7 +10,9 @@
             "name": "Launch Current File",
             "program": "${file}",
             "args": [
-                "-t",
+                "./test-config.json",
+                "./test-manifest.json",
+                "-t"
                 // "-a pull"
             ],
             "autoAttachChildProcesses": false
