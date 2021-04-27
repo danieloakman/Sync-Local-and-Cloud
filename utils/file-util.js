@@ -71,7 +71,7 @@ module.exports.mkdir = (path, manifest) => {
  * found inside of dir.
  */
 module.exports.readdirRecursive = async (dir, ignoreRegex = /(?=a)b/) => {
-  if (ignoreRegex.test(dir) || !fs.existsSync(dir))
+  if (ignoreRegex.test(dir) || !await module.exports.pathExists(dir, 0))
     return { files: [], dirs: [] };
   const stats = await module.exports.stat(dir);
   if (stats.isFile())
@@ -120,4 +120,29 @@ module.exports.convertToRelative = (path, root) => {
   return path
     .replace(/\//g, '\\')
     .replace(root + '\\', '');
+};
+
+/**
+* Asynchronously check if a path exists and optionally check if it is a certain number of
+* bytes in size.
+* @param path The path to check if it exists.
+* @param byteThresholdForFile The number of bytes the file at path must be greater
+* than or equal to (default: 1). Set to zero or less to turn off.
+* @returns Returns true if path exists, false if not.
+* @note If path points to a file, then does an extra check for the size of the file. Otherwise
+* this does the same thing as fs.existsSync.
+*/
+module.exports.pathExists = async function pathExists (path, byteThresholdForFile = 1) {
+  try {
+    // access() will throw an error if path doesn't exist:
+    await fs.promises.access(path, fs.constants.F_OK);
+
+    if (byteThresholdForFile <= 0) return true;
+    const stats = await fs.promises.stat(path);
+    return stats.isFile()
+      ? module.exports.getFileSize(stats, 'b') >= byteThresholdForFile
+      : true; // Path is to something else other than a file, so just return true.
+  } catch (_) {
+    return false;
+  }
 };
