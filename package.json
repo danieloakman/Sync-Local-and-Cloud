@@ -21,15 +21,13 @@
     "url": "https://github.com/danieloakman/Sync-Cloud-and-Local/issues"
   },
   "homepage": "https://github.com/danieloakman/Sync-Cloud-and-Local#readme",
-  "dependencies": {
+  "devDependencies": {
     "archiver": "^4.0.1",
     "argparse": "^2.0.1",
     "more-node-fs": "^1.2.1",
     "readline-sync": "^1.4.10",
     "terminal-kit": "^1.49.4",
-    "unzipper": "^0.10.11"
-  },
-  "devDependencies": {
+    "unzipper": "^0.10.11",
     "@babel/core": "^7.7.2",
     "@babel/preset-env": "^7.7.1",
     "babel-eslint": "^10.0.3",
